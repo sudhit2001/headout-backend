@@ -1,0 +1,121 @@
+
+networks:
+  globetrotter_network:
+
+services:
+  web1:
+    build:
+      context: .
+      dockerfile: docker/django.Dockerfile
+    container_name: django_web1
+    restart: always
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ./Globetrotter:/app
+    expose:
+      - "8000"
+    networks:
+      - globetrotter_network
+    command: >
+      sh -c "until nc -z redis 6379; do sleep 1; done &&
+            until nc -z mongodb 27017; do sleep 1; done &&
+            python /app/initialize_redis.py &&
+            python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+
+  web2:
+    build:
+      context: .
+      dockerfile: docker/django.Dockerfile
+    container_name: django_web2
+    restart: always
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ./Globetrotter:/app
+    expose:
+      - "8000"
+    networks:
+      - globetrotter_network
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx.Dockerfile
+    container_name: nginx
+    restart: always
+    depends_on:
+      - web1
+      - web2
+    ports:
+      - "80:80"
+    networks:
+      - globetrotter_network
+
+  postgres:
+    image: postgres:15
+    restart: always
+    container_name: postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh  # Add this
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - globetrotter_network
+
+  mongodb:
+    image: mongo:6
+    restart: always
+    container_name: mongodb
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_DB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_ROOT_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - globetrotter_network
+
+  redis:
+    image: redis:alpine
+    restart: always
+    container_name: redis
+    env_file:
+      - .env
+    ports:
+      - "6379:6379"
+    networks:
+      - globetrotter_network
+    depends_on:
+      - mongodb
+
+
+volumes:
+  postgres_data:
+  mongodb_data:
