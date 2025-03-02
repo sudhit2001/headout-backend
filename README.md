@@ -141,6 +141,22 @@ docker-compose exec django python populate_db.py
 docker-compose down
 ```
 
+### API Endpoints
+
+#### Authentication
+- `POST /api/v1/signup/` - Register a new user (JWT-based authentication)
+- `POST /api/v1/login/` - Log in and receive a JWT token
+- `GET /api/v1/check/` - Validate a JWT token
+
+#### Quiz Game
+- `GET /api/v1/next_question/` - Retrieve the next quiz question
+- `POST /api/v1/submit_answer/` - Submit an answer and get immediate feedback
+
+#### Social & Invites
+- `POST /api/v1/challenge_friend/` - Generate an invite link for a friend
+- `POST /api/v1/invite/` - Store an invitee's quiz score and generate a challenge link
+
+
 ## Notes
 
 - The `runserver` command is used for development.
